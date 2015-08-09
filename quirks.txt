@@ -1,0 +1,350 @@
+Quirks of JavaScript
+July 8th, 2011
+This page describes what we should be aware of while working with JavaScript, a powerful but tricky language.
+
+<br />
+= Distinguishing undeclared, undefined, null values =
+* Firefox/Chromium sometimes gives you and error of ”foo is not defined”, or ”foo is undefined”, and stops. Sometimes they still give ”foo” a value of ”undefined” and don’t stop. Why is ”not defined” different from ”undefined” ? How to avoid errors that stop javascript ?
+* You think ”’undefined”’ is a reserved word, and base the validity of your code on that. But this is not true. Why ?
+
+<br />
+== What is undefined ==
+* ”undefined” is an initial value of a declared variable, if you don’t assign a value to it.
+* ”undefined” is not a reserved word.
+
+<source lang=”javascript”>
+var undefined_var; // You don’t define it with a value
+alert(undefined_var); // Result: undefined
+
+var obj = {}; // An object of no property yet
+alert(obj.undefined_property); // Result: undefined
+
+obj.property_with_undefined_value = undefined; // Define a variable with a ”’undefined”’ value
+alert(property_with_undefined_value); // Result: undefined
+
+alert(type of undefined_var); // Result: the string “undefined”
+</source>
+
+<br />
+== What is undeclared ==
+* Undeclared is a variable that is never declared or was deleted. Firefox/Chromium call this ”not defined”.
+* Any ”undeclared” variable is always an ”undefined” property of the global ”window” object.
+* Unlike PHP, in JavaScript whenever you access an undeclared variable, the browser would throw an exception (in PHP, an ”undeclared” variable would have a value equal ”null” whenever you attempt to access it).
+
+<source lang=”javascript”>
+//undeclared_var was never declared
+alert(undeclared_var); // Error: undeclared_var is not defined
+
+delete(one_var);
+alert(one_var); // Error: one_var is not defined
+
+alert(window.undeclared_var); // Result: ”undefined”. No error is thrown.
+</source>
+
+<br />
+== What is null ==
+* ”null” is a special value that indicates no value.
+* ”null” is a reserved word.
+<source lang=”javascript”>
+var null_var = null;
+alert(type of null_var); // Result: the string “object” (Douglas Crockford is against having “object” as the type of null).
+</source>
+
+<br />
+== Accessing value of undefined/undeclared/null variable ==
+
+* Undefined variable’s value could be accessed without any problem.
+<source lang = “javascript”>
+var undefined_var;
+var x = undefined_var;
+alert(x); // Result: undefined.
+
+</source>
+
+* null variable’s value could be accessed without any problem.
+<source lang=”javascript”>
+var null_var = null;
+alert(null_var); // Result: the string ”null”
+</source>
+
+* Undeclared variable could be accessed using JavaScript constructs
+
+<source lang=”javascript”>
+delete(undeclared_var); // No error, undeclared_var doesn’t exist (also it has never existed before this line)
+typeof(undeclared_var); // Result: ‘undefined’ string
+</source>
+
+* Undeclared variable cannot be accessed using a user’s function
+
+<source lang=”javascript”>
+function doSomething(){};
+doSomething(undeclared_var);// Error: undeclared_var is not defined
+</source>
+
+<br />
+== Accessing properties of undefined or undeclared variables: ==
+
+<source lang=”javascript”>
+var undefined_obj;
+alert(undefined_obj.any_property); // Error: undefined_obj is undefined
+
+delete(undeclared_obj);
+alert(undeclared_obj.any_property); // Error: undeclared_obj is not defined
+</source>
+
+<br />
+== How to tell undefined/undeclared/null from other types/values ? ==
+<br />
+* Using ”’=== undefined”’ identifies the ”’undefined”’ type correctly.
+<source lang=”javascript”>
+var undefined_var;
+if (undefined === undefined_var) {alert(’undefined_var is detected’);} // Result: “undefined_var is detected”
+
+delete(undefined_var);
+if (undefined === undefined_var) {alert(’undefined_var is detected’);} else {alert(’undefined_var becomes undeclared’);}
+// Result: “undefined_var becomes undeclared”
+</source>
+
+<br />
+* Using the operator ”’typeof”’ tells undeclared/undefined from other types, but not distinguish between them
+<source lang=”javascript”>
+var undefined_var;
+delete(undeclared_var);
+if ((’undefined’ == typeof undefined_var) && (’undefined’ == typeof undeclared_var)){alert(’undefined_var and undeclared_var are detected, but not distinguished from each other’)}; // Result: ‘undefined_var and undeclared_var are detected, but not distinguished from each other’
+</source>
+
+<br />
+* Using ”null === ” identifies a ”null” value correctly.
+<source lang=”javascript”>
+var undefined_var = undefined;
+var null_var = null;
+if (null === null_var){…};
+if (null === undefined_var){…};
+if (null === undeclared_var){…};
+</source>
+
+<br />
+<br />
+== How to tell undefined/undeclared/null properties of a defined object ==
+
+<source lang=”javascript”>
+var obj = {}; //Declare, Define one object, which has nothing
+obj.undefined_property = undefined;
+alert (obj.undefined_property);// Result: undefined
+alert (obj.undeclared_property);// Result: undefined
+if (’undefined_property’ in obj){alert (’Yes’)}; // Result: ‘Yes’
+if (’undeclared_property’ in obj){alert (’No’)}; // Result: ‘No’
+
+function Parent(){};
+Parent.prototype.a = 1;
+
+var child_obj = new Parent();
+child_obj.b = 2;
+
+if (child_obj.hasOwnProperty(’a')){alert(’child_obj has a internally’);} // Result: nothing
+if (’a’ in child_obj){alert(’child_obj has a by inheritance’);} // Result: ‘child_obj has a by inheritance’
+
+</source>
+
+<br />
+<br />
+= Good practices working with undeclared/undefined/null =
+
+<br />
+* Don’t trust your ”’undefined”’: it is not considered by JavaScript as a reserved keyword, so if someone (or you) changed it before you, you are in trouble:
+
+<source lang = “javascript”>
+//In some other files someone mistakenly or deliberately tries to harm you
+undefined = “foo”;
+
+//Now in your code
+var x = undefined; // x now has the value of “foo”
+// Do something
+if (’undefined’ === typeof x) {//Do something important here;} // But it does nothing since ”’undefined”’ was changed
+
+// Another case
+var y; // y is a real ”’undefined” variable
+// Do something
+if (undefined === y) {//Do something important;} // But it does nothing since ”’undefined”’ was changed
+</source>
+
+Given such uncertainty, a safe practice is to either use ”’===”’ after re-initializing your ”’undefined”’ to be really ”’undefined”’
+
+<source lang = “javascript”>
+//Some former bad code
+undefined = 10;
+
+function foo(){
+var undefined;
+
+var y; // y is a real ”’undefined” variable
+if (undefined === y) {//Do something important;} // Success
+}
+</source>
+
+or to use typeof operator, with the drawback that it also accepts the undeclared variable.
+
+<source lang = “javascript”>
+//Some former bad code
+undefined = 10;
+
+function foo(){
+
+var y; // y is a real ”’undefined” variable
+if (’undefined’ === type of y) {//Do something important;} // Success
+}
+</source>
+
+<br />
+* If you are afraid that your script would stop upon an ”undeclared” variable, then turn it to ”undefined” by making it a (fake) property of ”window” and be restful.
+<source lang = “javascript”>
+
+function foo(){…}
+
+foo(undeclared_var); // Error: ”undeclared_var” is not defined
+foo(window.undeclared_var); // No error, window.undeclared_var has the ”undefined” value now.
+</source>
+
+<br />
+
+= Detecting if some elements do not exist =
+In our HTML code, some elements are generated by some PHP ”’print_”’ functions, which means that these elements sometime don’t exist in a HTML form that we are working with. In such case executing a function on a non existant element will cause an exception to be thrown. How to be avoid that? By checking if one element does exist.
+
+* The DOM way
+if (getElementById(’notAnElementID’){ // Do your stuff;}
+Note that getElementById() on a non existant element would return ”’null”’ on FF/Chrome, but ”’undefined”’ on IE. I (kto) think that this is a little flaw in the design of JS. Fortunately both of them are ”’falsy”’ values, so the code above would ”just work” (@Steve Jobs :) ).
+
+* The jQuery way: an unexistant element would cause the selector to return an empty array, thus you could check on its size():
+if ($(’#notAnElement’).length > 0)Â Â Â Â Â Â Â  { // Do your stuff;}
+It might be handy to create one function to hide the repetition
+$.fn.exists = function () {
+return this.length > 0;
+}
+and the client code will just be
+if ($(”#notAnElement”).exists())
+
+= Falsy and truthy in Javascript =
+
+== Distinguish falsy from truthy ==
+Read this: [http://nfriedly.com/techblog/2009/06/advanced-javascript-operators-and-truthy-falsy/ Truthy and Falsy]
+<source lang=”javascript”>
+if (condition)
+{} // all “falsy” values like:Â  0, false, null, undefined, NaN, empty-string ” would qualify for this branch
+else
+{} // all other “truthy” values qualify for this branch
+</source>
+
+* Note that even when the following things are all ”falsy”:Â  ”’0, false, null, undefined, NaN, ‘ ‘ ”’ (empty string), they are not guaranteed to be ”equal” (using ”’==”’ and ”’!=”’).
+<source lang=”javascript”>
+// Example:
+alert(0 == undefined); // ”false”
+alert(0 != undefined); // ”true”
+</source>
+<br>
+
+== Truth table of the JavaScript equal operator ==
+* The equal comparison operator ”’==”’ is confusing and should be avoided. If you ”’have to”’ live with it, then remember the following 3 things:
+
+** <tt>==</tt> is not transitive, i.e. <tt>(a == b)</tt> and <tt>(b == c)</tt> does not lead to <tt>(a == c)</tt>
+** <tt>==</tt> and <tt>!=</tt> are mutually exclusive, i.e. if <tt>(a == b)</tt> evaluates to ”true” then <tt>(a != b)</tt> evaluates to ”false”, and vice versa.
+** In case of doubt, learn by heart the following truth table:
+<source lang=”javascript”>
+//——————– TRUTH TABLE THAT EASES YOUR BRAIN IN JAVASCRIPT —————————–
+//————————————————————————————————–
+// The following set of 3 values are mutually equal, meaning that any 2 values among them are equal using the equal == sign
+// Strange: note that any two values on the first column are not equal in that sense.
+
+”Â Â Â Â Â Â  == 0 == falseÂ Â  // Any two values among these 3 ones are equal with the == operator
+‘0′Â Â Â Â Â  == 0 == falseÂ Â  // Also a set of 3 equal values, note that only 0 and false are repeated
+‘\t’Â Â Â Â  == 0 == falseÂ Â  // — – — – — – — – — – — – — – — – — – — – — – –
+‘\r’Â Â Â Â  == 0 == falseÂ Â  // — – — – — – — – — – — – — – — – — – — – — – –
+‘\n’Â Â Â Â  == 0 == falseÂ Â  // — – — – — – — – — – — – — – — – — – — – — – –
+‘\t\r\n’ == 0 == falseÂ Â  // — – — – — – — – — – — – — – — – — – — – — – –
+
+null == undefinedÂ  // These two “default” values are not-equal with any of the listed values above
+NaNÂ Â Â Â Â Â Â Â Â Â Â Â Â Â Â  // NaN is not equal to any thing, even to itself.
+//————————————————————————————————–
+</source>
+
+= Event handling in Javascript =
+
+Keep the following in mind when dealing with jQuery eventhandlers and triggers:
+*”When an event reaches an element, all handlers bound to that event type for the element are fired.
+If there are multiple handlers registered, they will always execute in the order in which they were bound.
+After all handlers have executed, the event continues along the normal event propagation path.” (from [http://api.jquery.com/bind/ jQuery.com])
+
+*jQuery events only bubble UP the DOM (to parent elements) and NOT DOWN (to child elements)
+
+= The problem of Focus(ing) in Javascript =
+
+*[TODO]
+
+<br />
+= By value or by reference ? =
+If you google around, you could see alot of phrases like “objects are passed by value, but actually are passed by reference”, or “objects are compared by reference, but strings are compared by value”. The “Bible” [1] version 5 says: “References themselves are passed by value”. Gek huh ? What do they really mean ?
+
+In this section, we would explore the notions of copy, pass, comparison and manipulation of primitive types (number, boolean), objects and string, in terms of value or pointer/reference (note that the notion of pointer/reference of JavaScript is not 100% like C/C++/Java)
+
+* A primitive typed (number, boolean) variable is passed, copied, compared by value
+<br />
+* An object typed (array, object) variable acts nearly similarly to a (C/C++ styled) pointer to an object, in that:
+** While copying, only the pointer value (the location of the memory slot where this pointer points to) is copied
+<source lang=”javascript”>
+var x = {member : “Portavita”};
+
+var x_arr = [];
+for (i = 0; i < 100; i++){
+x_arr[i] = x;
+}
+// There is only one copy of {member = “Portavita”}.
+</source>
+
+<br />
+** Similarly, while passing, only the pointer value is copied.
+<source lang=”javascript”>
+function foo(obj){
+obj.newmember = “This is a new member”; // This changes the variable pointed by obj.
+obj = null; // This does not change the variable pointed by obj
+}
+
+var outer_obj = {member : “Portavita”};
+foo(outer_obj);
+alert(outer_obj);Â Â Â Â Â Â Â Â Â Â Â  // Prints “Object” instead of null
+alert(outer_obj.member);Â Â Â Â  // Prints “Portavita”
+alert(outer_obj.newmember);Â  // Prints “This is a new member”
+</source>
+
+<br />
+** While comparing, you compare the dereferenced pointer (similarly to *ptr in C/C++)
+<source lang=”javascript”>
+var x = {member : “Portavita”};
+var y = x;
+
+if (x === y) {alert(”Objects are compared by reference”);} // Print the string out
+
+var z = {member : “Portavita”};
+var t = {member : “Portavita”};
+if (z === t) {} else {alert(”Objects are NOT compared by value”);}; // Print the string out
+</source>
+
+<br />
+* A string is different from an object in that it is
+** Immutable (cannot be changed): there is a ”.charAt()” method, but no way to change any element of the string (no ”.setCharAt()” method)
+<br />
+** Copied/Passed by pointer, but compared by value
+<source lang=”javascript”>
+var x = “Porta” + “vita”;
+var y = “P” + “ortavita”;
+if (x === y) {alert “Strings are compared by value”};
+</source>
+
+= Working with arrays =
+== Comparing two arrays ==
+As arrays are objects, and objects are compared by reference, not by value (except for string), we cannot compare two array by ”==” or ”===”.
+So one fast/consistent/concise way is to serialize arrays, and compare them
+if (array1.join(’ ‘) === array2.join(’ ‘)){//do your stuff;} // Note that we use an empty string as parameter to ”.join()”, here we use ‘ ‘ for wiki-editing only.
+Note that
+* the ”.join()” function produces the same result as ”.toString()”, but ”.join(’ ‘)” doesn’t add ”comma” into the resulted string, thus comparison will be faster.
+* although comparing by ”==” is just enough, I (kto) think sticking to ”===” is a good practice: you don’t need to care if some confusing conversions happen.
+
+
